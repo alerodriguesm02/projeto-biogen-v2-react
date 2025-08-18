@@ -22,6 +22,10 @@ export default function SettingsPage() {
     company: "EcoTech Solutions",
     email: "test@example.com",
     avatar: "/abstract-profile.png",
+    address: "Av. Paulista, 1578 - Bela Vista, São Paulo - SP, 01310-200",
+    city: "São Paulo",
+    state: "SP",
+    zipCode: "01310-200",
   })
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
@@ -142,6 +146,58 @@ export default function SettingsPage() {
                   onChange={(e) => setProfileData((prev) => ({ ...prev, email: e.target.value }))}
                   className="border-green-300 focus:border-green-500"
                 />
+              </div>
+
+              {/* Address Fields Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-green-800">Endereço da Empresa</h3>
+                <div className="space-y-2">
+                  <Label htmlFor="address" className="text-green-800">
+                    Endereço Completo
+                  </Label>
+                  <Input
+                    id="address"
+                    value={profileData.address}
+                    onChange={(e) => setProfileData((prev) => ({ ...prev, address: e.target.value }))}
+                    className="border-green-300 focus:border-green-500"
+                    placeholder="Rua, número, bairro"
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="city" className="text-green-800">
+                      Cidade
+                    </Label>
+                    <Input
+                      id="city"
+                      value={profileData.city}
+                      onChange={(e) => setProfileData((prev) => ({ ...prev, city: e.target.value }))}
+                      className="border-green-300 focus:border-green-500"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="state" className="text-green-800">
+                      Estado
+                    </Label>
+                    <Input
+                      id="state"
+                      value={profileData.state}
+                      onChange={(e) => setProfileData((prev) => ({ ...prev, state: e.target.value }))}
+                      className="border-green-300 focus:border-green-500"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="zipCode" className="text-green-800">
+                      CEP
+                    </Label>
+                    <Input
+                      id="zipCode"
+                      value={profileData.zipCode}
+                      onChange={(e) => setProfileData((prev) => ({ ...prev, zipCode: e.target.value }))}
+                      className="border-green-300 focus:border-green-500"
+                    />
+                  </div>
+                </div>
               </div>
 
               <Button type="submit" disabled={isLoading} className="bg-green-600 hover:bg-green-700">

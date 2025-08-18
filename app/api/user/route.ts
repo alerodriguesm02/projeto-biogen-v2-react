@@ -1,66 +1,92 @@
 import { NextResponse } from "next/server"
-
-// In a real application, you would validate against your database
-// This is a simplified example with a hardcoded test user
-const TEST_USER = {
-  id: 1,
-  email: "test@example.com",
-  name: "Test User",
-}
-
-// Simple token verification for demo purposes
-function verifySimpleToken(token: string) {
-  try {
-    // Check if token has the expected format
-    if (!token.startsWith("DEMO.")) {
-      return null
-    }
-
-    // Extract the payload part (second segment)
-    const parts = token.split(".")
-    if (parts.length !== 3) {
-      return null
-    }
-
-    // Decode the payload
-    const payload = JSON.parse(Buffer.from(parts[1], "base64").toString())
-    return payload
-  } catch (error) {
-    console.error("Token verification error:", error)
-    return null
-  }
-}
+import { createClient } from "@/lib/supabase/server"
 
 export async function GET(request: Request) {
   try {
-    // Get the authorization header
-    const authHeader = request.headers.get("authorization")
+    const supabase = createClient()
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    // Get authenticated user
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+    if (authError || !user) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 })
     }
 
-    // Extract the token
-    const token = authHeader.split(" ")[1]
+    const { data: userProfile, error } = await supabase.from("users").select("*").eq("id", user.id).single()
 
-    // Verify the token
-    const decoded = verifySimpleToken(token)
-
-    if (!decoded) {
-      return NextResponse.json({ success: false, message: "Invalid token" }, { status: 401 })
+    if (error && error.code !== "PGRST116") {
+      // PGRST116 = no rows returned
+      console.error("Database error:", error)
+      return NextResponse.json({ success: false, message: "Failed to fetch user data" }, { status: 500 })
     }
 
-    // Return the user data
+    // Return user data (create profile if doesn't exist)
+    const userData = userProfile || {
+      id: user.id,
+      email: user.email,
+      full_name: user.user_metadata?.full_name || "User",
+      company_name: null,
+      address: null,
+      phone: null,
+      profile_image_url: null,
+    }
+
     return NextResponse.json({
       success: true,
-      user: {
-        id: TEST_USER.id,
-        email: TEST_USER.email,
-        name: TEST_USER.name,
-      },
+      user: userData,
     })
   } catch (error) {
     console.error("Auth error:", error)
-    return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 })
+    return NextResponse.json({ success: false, message: "Internal server error" }, { status: 500 })
+  }
+}
+
+export async function PUT(request: Request) {
+  try {
+    const supabase = createClient()
+
+    // Get authenticated user
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const { full_name, company_name, address, phone, profile_image_url } = body
+
+    // Upsert user profile
+    const { data, error } = await supabase
+      .from("users")
+      .upsert({
+        id: user.id,
+        email: user.email,
+        full_name,
+        company_name,
+        address,
+        phone,
+        profile_image_url,
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error("Database error:", error)
+      return NextResponse.json({ success: false, message: "Failed to update user data" }, { status: 500 })
+    }
+
+    return NextResponse.json({
+      success: true,
+      user: data,
+      message: "Profile updated successfully",
+    })
+  } catch (error) {
+    console.error("Update error:", error)
+    return NextResponse.json({ success: false, message: "Internal server error" }, { status: 500 })
   }
 }

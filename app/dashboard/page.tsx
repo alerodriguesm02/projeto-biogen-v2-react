@@ -1,7 +1,5 @@
-"use client"
-
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/server"
+import { redirect } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DashboardHeader } from "@/components/dashboard-header"
@@ -10,54 +8,28 @@ import { Overview } from "@/components/overview"
 import { RecentActivity } from "@/components/recent-activity"
 import { DashboardStats } from "@/components/dashboard-stats"
 import { ExportButtons } from "@/components/export-buttons"
-import { BarChart3, TrendingUp, AlertCircle, FileText, Bell } from "lucide-react"
+import { BarChart3, TrendingUp, AlertCircle, FileText, Bell, MapPin } from "lucide-react"
+import { GoogleMaps } from "@/components/google-maps"
 
-export default function DashboardPage() {
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(true)
-  const [userData, setUserData] = useState<any>(null)
+export default async function DashboardPage() {
+  const supabase = createClient()
 
-  useEffect(() => {
-    const token = localStorage.getItem("token")
+  // Get authenticated user
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
 
-    if (!token) {
-      router.push("/login")
-      return
-    }
-
-    const fetchUserData = async () => {
-      try {
-        const response = await fetch("/api/user", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch user data")
-        }
-
-        const data = await response.json()
-        setUserData(data)
-      } catch (error) {
-        console.error("Error fetching user data:", error)
-        localStorage.removeItem("token")
-        router.push("/login")
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchUserData()
-  }, [router])
-
-  if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-green-50">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-green-500 border-t-transparent"></div>
-      </div>
-    )
+  // If no user, redirect to login
+  if (error || !user) {
+    redirect("/login")
   }
+
+  // Get user profile data
+  const { data: userProfile } = await supabase.from("users").select("*").eq("id", user.id).single()
+
+  const defaultAddress = userProfile?.address || "Av. Paulista, 1578 - Bela Vista, São Paulo - SP, 01310-200"
+  const companyName = userProfile?.company_name || "EcoTech Solutions"
 
   return (
     <DashboardShell>
@@ -94,6 +66,25 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </div>
+
+          <Card className="bio-card">
+            <CardHeader>
+              <CardTitle className="text-green-800 flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Localização da Empresa
+              </CardTitle>
+              <CardDescription className="text-green-600">
+                Localização do biodigestor e instalações da empresa
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <GoogleMaps address={defaultAddress} />
+              <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                <p className="text-sm text-green-800 font-medium">{companyName}</p>
+                <p className="text-sm text-green-600">{defaultAddress}</p>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-4">
