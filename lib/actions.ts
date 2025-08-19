@@ -90,8 +90,12 @@ export async function signUp(prevState: any, formData: FormData) {
         id: data.user.id,
         email: data.user.email,
         company_name: "Empresa Demo",
-        company_address: "Rua das Flores, 123 - São Paulo, SP",
+        address: "Rua das Flores, 123",
+        city: "São Paulo",
+        state: "SP",
+        zip_code: "01234-567",
         phone: "(11) 99999-9999",
+        full_name: "Usuário Demo",
       })
 
       if (profileError) {

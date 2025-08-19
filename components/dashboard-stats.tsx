@@ -4,43 +4,69 @@ import { useEffect, useState } from "react"
 import { ArrowDown, ArrowUp, Droplet, Leaf, Zap } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-// Sample data - in a real app, this would come from your API
-const statsData = {
-  wasteProcessed: {
-    value: "2,840",
-    unit: "kg",
-    change: "+12.5%",
-    increasing: true,
-  },
-  energyGenerated: {
-    value: "1,245",
-    unit: "kWh",
-    change: "+8.2%",
-    increasing: true,
-  },
-  taxDeduction: {
-    value: "$3,450",
-    unit: "",
-    change: "-2.5%",
-    increasing: false,
-  },
-  efficiency: {
-    value: "94.2",
-    unit: "%",
-    change: "+1.2%",
-    increasing: true,
-  },
+interface DashboardData {
+  energyGenerated: number
+  wasteProcessed: number
+  taxSavings: number
 }
 
 export function DashboardStats() {
   const [mounted, setMounted] = useState(false)
+  const [dashboardData, setDashboardData] = useState<DashboardData>({
+    energyGenerated: 0,
+    wasteProcessed: 0,
+    taxSavings: 0,
+  })
 
   useEffect(() => {
     setMounted(true)
+    loadDashboardData()
+
+    const interval = setInterval(loadDashboardData, 30000)
+    return () => clearInterval(interval)
   }, [])
+
+  const loadDashboardData = async () => {
+    try {
+      const response = await fetch("/api/dashboard/indicators")
+      if (response.ok) {
+        const data = await response.json()
+        setDashboardData(data)
+      }
+    } catch (error) {
+      console.error("Error loading dashboard data:", error)
+    }
+  }
 
   if (!mounted) {
     return null
+  }
+
+  const statsData = {
+    wasteProcessed: {
+      value: dashboardData.wasteProcessed.toFixed(1),
+      unit: "kg",
+      change: "+12.5%",
+      increasing: true,
+    },
+    energyGenerated: {
+      value: dashboardData.energyGenerated.toFixed(1),
+      unit: "kWh",
+      change: "+8.2%",
+      increasing: true,
+    },
+    taxDeduction: {
+      value: `R$ ${dashboardData.taxSavings.toFixed(2)}`,
+      unit: "",
+      change: "+15.3%",
+      increasing: true,
+    },
+    efficiency: {
+      value: "94.2",
+      unit: "%",
+      change: "+1.2%",
+      increasing: true,
+    },
   }
 
   return (

@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -12,34 +12,85 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { DashboardShell } from "@/components/dashboard-shell"
 import { useToast } from "@/hooks/use-toast"
+import { supabase } from "@/lib/supabase/client"
 
 export default function SettingsPage() {
   const router = useRouter()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
+  const [user, setUser] = useState<any>(null)
   const [profileData, setProfileData] = useState({
-    name: "João Silva",
-    company: "EcoTech Solutions",
-    email: "test@example.com",
+    name: "",
+    company: "",
+    email: "",
     avatar: "/abstract-profile.png",
-    address: "Av. Paulista, 1578 - Bela Vista, São Paulo - SP, 01310-200",
-    city: "São Paulo",
-    state: "SP",
-    zipCode: "01310-200",
+    address: "",
+    city: "",
+    state: "",
+    zipCode: "",
   })
+
+  useEffect(() => {
+    const loadUserData = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (user) {
+        setUser(user)
+        const { data: userData } = await supabase.from("users").select("*").eq("id", user.id).single()
+
+        if (userData) {
+          setProfileData({
+            name: userData.name || "",
+            company: userData.company || "",
+            email: user.email || "",
+            avatar: userData.avatar_url || "/abstract-profile.png",
+            address: userData.address || "",
+            city: userData.city || "",
+            state: userData.state || "",
+            zipCode: userData.zip_code || "",
+          })
+        }
+      }
+    }
+    loadUserData()
+  }, [])
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!user) return
+
     setIsLoading(true)
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false)
+    try {
+      const { error } = await supabase
+        .from("users")
+        .update({
+          name: profileData.name,
+          company: profileData.company,
+          address: profileData.address,
+          city: profileData.city,
+          state: profileData.state,
+          zip_code: profileData.zipCode,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id)
+
+      if (error) throw error
+
       toast({
         title: "Perfil atualizado",
         description: "Suas informações foram salvas com sucesso.",
       })
-    }, 1000)
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o perfil.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handlePasswordChange = async (e: React.FormEvent) => {
@@ -56,17 +107,54 @@ export default function SettingsPage() {
     }, 1000)
   }
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setProfileData((prev) => ({
-          ...prev,
-          avatar: e.target?.result as string,
-        }))
-      }
-      reader.readAsDataURL(file)
+    if (!file || !user) return
+
+    setIsLoading(true)
+
+    try {
+      // Upload file to Supabase Storage
+      const fileExt = file.name.split(".").pop()
+      const fileName = `${user.id}-${Math.random()}.${fileExt}`
+      const filePath = `avatars/${fileName}`
+
+      const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, file)
+
+      if (uploadError) throw uploadError
+
+      // Get public URL
+      const { data } = supabase.storage.from("avatars").getPublicUrl(filePath)
+
+      const avatarUrl = data.publicUrl
+
+      // Update user record with new avatar URL
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({
+          avatar_url: avatarUrl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id)
+
+      if (updateError) throw updateError
+
+      // Update local state
+      setProfileData((prev) => ({ ...prev, avatar: avatarUrl }))
+
+      toast({
+        title: "Foto atualizada",
+        description: "Sua foto de perfil foi alterada com sucesso.",
+      })
+    } catch (error) {
+      console.error("Error uploading avatar:", error)
+      toast({
+        title: "Erro",
+        description: "Não foi possível fazer upload da foto.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -100,8 +188,9 @@ export default function SettingsPage() {
                   <Button
                     variant="outline"
                     className="border-green-300 text-green-700 hover:bg-green-50 bg-transparent"
+                    disabled={isLoading}
                   >
-                    Alterar Foto
+                    {isLoading ? "Enviando..." : "Alterar Foto"}
                   </Button>
                 </Label>
                 <Input id="avatar" type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
