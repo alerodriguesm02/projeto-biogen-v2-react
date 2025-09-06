@@ -9,7 +9,13 @@ import { RecentActivity } from "@/components/recent-activity"
 import { DashboardStats } from "@/components/dashboard-stats"
 import { ExportButtons } from "@/components/export-buttons"
 import { BarChart3, TrendingUp, AlertCircle, FileText, Bell, MapPin } from "lucide-react"
-import { GoogleMaps } from "@/components/google-maps"
+// ...existing code...
+import MapWrapper from "@/components/map-wrapper"
+import BiodigestorMonitoring from "@/components/indicadores-widget"
+
+
+import dynamic from 'next/dynamic';
+
 
 export default async function DashboardPage() {
   const supabase = createClient()
@@ -25,8 +31,11 @@ export default async function DashboardPage() {
     redirect("/login")
   }
 
+  // Type assertion to ensure supabase is the real client
+  const realSupabase = supabase as import("@supabase/supabase-js").SupabaseClient
+
   // Get user profile data
-  const { data: userProfile } = await supabase.from("users").select("*").eq("id", user.id).single()
+  const { data: userProfile } = await realSupabase.from("users").select("*").eq("id", user.id).single()
 
   const defaultAddress = userProfile?.address || "Av. Paulista, 1578 - Bela Vista, São Paulo - SP, 01310-200"
   const companyName = userProfile?.company_name || "EcoTech Solutions"
@@ -62,7 +71,8 @@ export default async function DashboardPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <RecentActivity />
+                <BiodigestorMonitoring />
+                {/*<RecentActivity />*/}
               </CardContent>
             </Card>
           </div>
@@ -78,11 +88,10 @@ export default async function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <GoogleMaps address={defaultAddress} />
-              <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
-                <p className="text-sm text-green-800 font-medium">{companyName}</p>
-                <p className="text-sm text-green-600">{defaultAddress}</p>
+              <div className="w-full z-[0]">
+                <MapWrapper />
               </div>
+             
             </CardContent>
           </Card>
         </TabsContent>
@@ -319,10 +328,12 @@ export default async function DashboardPage() {
                   </label>
                 </div>
               </div>
+              
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
     </DashboardShell>
+  
   )
 }
