@@ -3,11 +3,12 @@ import type { Metadata } from "next"
 import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
 import "./globals.css"
-import SupportModal from "@/components/support-modal"
+import CalendlyWidget from "@/components/calendly-widget"
+import BiodigestorMonitoring from "@/components/indicadores-widget"
 
 export const metadata: Metadata = {
-  title: "v0 App",
-  description: "Created with v0",
+  title: "Biodash by Biogen",
+  description: "Biodigestor Operational System",
   generator: "v0.dev",
 }
 
@@ -17,7 +18,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="pt-br">
       <head>
         <style>{`
 html {
@@ -29,7 +30,12 @@ html {
       </head>
       <body>
         {children}
-        <SupportModal />
+        <script
+  src="https://assets.calendly.com/assets/external/widget.js"
+  type="text/javascript"
+  async
+/>
+        
       </body>
     </html>
   )
